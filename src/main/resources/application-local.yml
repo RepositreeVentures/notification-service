@@ -1,0 +1,11 @@
+server:
+  port: 8083
+
+logging:
+  level:
+    io.repositree: DEBUG
+    org.hibernate.SQL: DEBUG
+
+spring:
+  jpa:
+    show-sql: true
