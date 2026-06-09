@@ -1,0 +1,27 @@
+aws_region  = "ap-south-1"
+environment = "staging"
+
+# Set to the git SHA output by CI (e.g. github.sha)
+image_tag = "replace-with-git-sha"
+
+# Use an existing VPC — leave empty to let Terraform create one
+# vpc_id             = "vpc-xxxxxxxxxxxxxxxxx"
+# private_subnet_ids = ["subnet-xxxxxxxxxxxxxxxxx", "subnet-xxxxxxxxxxxxxxxxx"]
+# public_subnet_ids  = ["subnet-xxxxxxxxxxxxxxxxx", "subnet-xxxxxxxxxxxxxxxxx"]
+
+# RDS
+db_password      = "change-me-use-a-strong-password"
+db_instance_class = "db.t4g.small"
+db_multi_az      = false
+
+# MSK — single broker for non-prod, 3 for production
+msk_broker_count         = 1
+msk_broker_instance_type = "kafka.t3.small"
+
+# ECS
+ecs_task_cpu      = 512
+ecs_task_memory   = 1024
+ecs_desired_count = 1
+
+# ALB
+alb_internal = true
