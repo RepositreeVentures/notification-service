@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Configure AWS credentials (CodeArtifact read)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::955413563895:role/repositree-codeartifact-consume
+          aws-region: ap-south-1
+
+      - name: Get CodeArtifact auth token
+        id: ca
+        run: |
+          token=$(aws codeartifact get-authorization-token \
+            --domain repositree --domain-owner 955413563895 \
+            --query authorizationToken --output text --region ap-south-1)
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        run: ./gradlew build --no-daemon
+        env:
+          CODEARTIFACT_AUTH_TOKEN: ${{ steps.ca.outputs.token }}
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/tests/
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Configure AWS credentials (CodeArtifact read)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::955413563895:role/repositree-codeartifact-consume
+          aws-region: ap-south-1
+
+      - name: Get CodeArtifact auth token
+        id: ca
+        run: |
+          token=$(aws codeartifact get-authorization-token \
+            --domain repositree --domain-owner 955413563895 \
+            --query authorizationToken --output text --region ap-south-1)
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Docker image to GHCR
+        run: ./gradlew jib --no-daemon
+        env:
+          CODEARTIFACT_AUTH_TOKEN: ${{ steps.ca.outputs.token }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_TAG: ${{ github.sha }}
